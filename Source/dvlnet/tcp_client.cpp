@@ -34,6 +34,7 @@ int tcp_client::join(std::string_view addrstr)
 {
 	constexpr int MsSleep = 10;
 	constexpr int NoSleep = 250;
+	constexpr uint32_t ConnectTimeoutMs = 10000;
 
 	const char *defaultPort = "6112";
 	std::string_view host;
@@ -74,7 +75,32 @@ int tcp_client::join(std::string_view addrstr)
 		return -1;
 	}
 
-	asio::connect(sock, range, errorCode);
+	struct AsyncConnectResult {
+		bool complete = false;
+		asio::error_code errorCode;
+	};
+	auto connectResult = std::make_shared<AsyncConnectResult>();
+
+	ioc.restart();
+	asio::async_connect(sock, range, [connectResult](const asio::error_code &ec, const asio::ip::tcp::endpoint &) {
+		connectResult->errorCode = ec;
+		connectResult->complete = true;
+	});
+	const uint32_t connectStart = SDL_GetTicks();
+	while (!connectResult->complete && SDL_GetTicks() - connectStart < ConnectTimeoutMs) {
+		if (ioc.poll_one() == 0)
+			SDL_Delay(MsSleep);
+	}
+	if (!connectResult->complete) {
+		asio::error_code closeError;
+		sock.close(closeError);
+		ioc.restart();
+		while (ioc.poll_one() > 0) {
+		}
+		SDL_SetError("%s", _("Timed out while connecting").data());
+		return -1;
+	}
+	errorCode = connectResult->errorCode;
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
