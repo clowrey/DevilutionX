@@ -69,7 +69,13 @@ int tcp_client::join(std::string_view addrstr)
 	}
 
 	asio::error_code errorCode;
+#ifdef DEVILUTIONX_WINDOWS_NO_WCHAR
+	// Windows 9x does not have a reliable IPv6 stack. Prefer IPv4 endpoints explicitly
+	// so joining modern hosts does not stall while trying IPv6 first.
+	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(asio::ip::tcp::v4(), host, port, errorCode);
+#else
 	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(host, port, errorCode);
+#endif
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
