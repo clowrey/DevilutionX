@@ -2,8 +2,12 @@ set(ASAN OFF)
 set(UBSAN OFF)
 set(DIST ON)
 
-set(NONET ON)
+# Enable local multiplayer netcode on Windows 9x.
+set(NONET OFF)
+set(DISABLE_TCP OFF)
+# ZeroTier and packet encryption rely on newer dependencies that are not Win9x-friendly.
 set(DISABLE_ZERO_TIER ON)
+set(PACKET_ENCRYPTION OFF)
 set(USE_SDL1 ON)
 set(DEVILUTIONX_SYSTEM_BZIP2 OFF)
 set(DEVILUTIONX_SYSTEM_LIBFMT OFF)
